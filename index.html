@@ -6,7 +6,7 @@
   <title>Sistema Financeiro — Igreja</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root{--bg:#0b1220;--card:#141c2e;--muted:#b0c0dd;--ok:#22c55e;--warn:#eab308;--err:#ef4444}
+    :root{--bg:#0b1220;--card:#141c2e}
     body{background:var(--bg); color:#e6edf7}
     .card{background:var(--card)}
     .ghost-input{background:#0e1729;border:1px solid #25314d}
@@ -29,7 +29,7 @@
   </header>
 
   <main class="max-w-6xl mx-auto px-4 py-6">
-    <!-- ========================= Área do Membro ========================= -->
+    <!-- ========== Área do Membro (Consulta) ========== -->
     <section id="consultaView" class="grid gap-6">
       <div class="card rounded-2xl p-5">
         <h2 class="text-lg font-medium mb-3">Consultar minhas ofertas e notificações</h2>
@@ -44,7 +44,7 @@
           </div>
           <button id="btnConsultar" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Consultar</button>
         </div>
-        <p class="text-xs text-slate-400 mt-2">Guarde seu código em segurança. Caso perca, peça ao administrador para recuperar.</p>
+        <p class="text-xs text-slate-400 mt-2">Guarde seu código. Se perder, peça ao administrador para recuperar.</p>
       </div>
 
       <div id="membroInfo" class="hidden card rounded-2xl p-5">
@@ -119,7 +119,7 @@
       </div>
     </section>
 
-    <!-- ========================= Área do Administrador ========================= -->
+    <!-- ========== Área do Administrador ========== -->
     <section id="adminView" class="hidden grid gap-6">
       <div class="card rounded-2xl p-5">
         <h2 class="text-lg font-medium mb-3">Login do Administrador</h2>
@@ -153,7 +153,6 @@
             <input id="mRoles" class="ghost-input rounded-xl px-3 py-2" placeholder="Cargos (ex.: Pastor, Diácono)" />
             <button id="btnAddMembro" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Salvar</button>
           </div>
-          <p class="text-xs text-slate-400 mt-2">O sistema gera automaticamente o <strong>Código de Consulta</strong> e exibe acima ao salvar.</p>
         </div>
 
         <!-- Lançar Oferta/Doação -->
@@ -219,110 +218,110 @@
   <footer class="py-8 text-center text-xs text-slate-400">© <span id="year"></span> Igreja — Sistema Financeiro</footer>
 
   <script>
-    // 👉 Cole aqui a URL do Web App do Apps Script após publicar
-    const API_URL = "https://script.google.com/macros/s/AKfycbwY4uBObBtRJNw1wboFm1NOujLNg0tUjggFoJccIM-_84JPqUS3BIv36CFaTg0n-d_4-A/exec"; // ex.: https://script.google.com/macros/s/AKfycbx.../exec
+    // ======= CONFIG =======
+    const API_URL = "https://script.google.com/macros/s/AKfycbzdvPIC2PNpWDKvwURgHuum55n0K6h5HJM8gPq4wzfs4MqPLfTnyGhTqJXilQoAzwo/exec"; // <-- cole aqui a URL /exec
+    // ======================
 
     const el = (id)=>document.getElementById(id);
     const show = (n)=>el(n).classList.remove('hidden');
     const hide = (n)=>el(n).classList.add('hidden');
-
     document.getElementById('year').textContent = new Date().getFullYear();
 
     // Tabs
     el('tabConsulta').onclick = ()=>{ show('consultaView'); hide('adminView'); };
     el('tabAdmin').onclick = ()=>{ hide('consultaView'); show('adminView'); };
 
-    // ------- CONSULTA (MEMBRO) -------
+    // ======= Helper sem CORS (URL-encoded) =======
+    async function apiCall(payloadObj){
+      const form = new URLSearchParams();
+      form.append('payload', JSON.stringify(payloadObj));
+      const resp = await fetch(API_URL, { method: 'POST', body: form });
+      const text = await resp.text();
+      try { return JSON.parse(text); }
+      catch { return {success:false, message:'Resposta não-JSON da API', raw:text}; }
+    }
+
+    // ======= CONSULTA (Membro) =======
     el('btnConsultar').onclick = async ()=>{
       const code = el('consultaCodigo').value.trim().toUpperCase();
       const doc  = el('consultaDoc').value.trim();
       if(!code){ alert('Informe o código de consulta.'); return; }
-      try{
-        const res = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'memberPortal', code, doc})});
-        const data = await res.json();
-        if(!data.success){ alert(data.message||'Não encontrado.'); return; }
 
-        // Perfil do membro
-        const m = data.member;
-        el('membroFoto').src = m.photo || 'https://i.pravatar.cc/160?img=12';
-        el('membroNome').textContent = m.name + ' — ' + m.code;
-        el('membroRoles').textContent = m.roles?.length? ('Cargos: ' + m.roles.join(', ')) : 'Sem cargos cadastrados';
-        el('membroContato').textContent = [m.email, m.phone].filter(Boolean).join(' • ');
-        show('membroInfo');
+      const data = await apiCall({action:'memberPortal', code, doc});
+      if(!data.success){ alert(data.message||'Não encontrado.'); return; }
 
-        // Notificações
-        const list = el('notificacoesList');
-        list.innerHTML = '';
-        (data.notifications||[]).forEach(n=>{
-          const li = document.createElement('li');
-          li.className='p-3 rounded-xl badge';
-          li.innerHTML = `<div class="text-sm font-medium">${n.title}</div><div class="text-xs text-slate-300">${n.message}</div><div class="text-[10px] text-slate-500 mt-1">${n.date}</div>`;
-          list.appendChild(li);
-        });
-        show('notificacoesBox');
+      const m = data.member;
+      el('membroFoto').src = m.photo || 'https://i.pravatar.cc/160?img=12';
+      el('membroNome').textContent = m.name + ' — ' + m.code;
+      el('membroRoles').textContent = m.roles?.length? ('Cargos: ' + m.roles.join(', ')) : 'Sem cargos cadastrados';
+      el('membroContato').textContent = [m.email, m.phone].filter(Boolean).join(' • ');
+      show('membroInfo');
 
-        // Ofertas pagas
-        const tPaid = el('tablePagas');
-        tPaid.innerHTML='';
-        (data.paid||[]).forEach(r=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td class="py-2">${r.date}</td><td>${r.type}</td><td>${r.description||''}</td><td class="text-right">${Number(r.amount).toLocaleString()}</td>`;
-          tPaid.appendChild(tr);
-        });
-        show('ofertasPagas');
+      // Notificações
+      const list = el('notificacoesList');
+      list.innerHTML = '';
+      (data.notifications||[]).forEach(n=>{
+        const li = document.createElement('li');
+        li.className='p-3 rounded-xl badge';
+        li.innerHTML = `<div class="text-sm font-medium">${n.title}</div><div class="text-xs text-slate-300">${n.message}</div><div class="text-[10px] text-slate-500 mt-1">${n.date}</div>`;
+        list.appendChild(li);
+      });
+      show('notificacoesBox');
 
-        // Pendentes
-        const tPend = el('tablePendentes');
-        tPend.innerHTML='';
-        (data.pending||[]).forEach(r=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td class="py-2">${r.date}</td><td>${r.type}</td><td>${r.description||''}</td><td class="text-right">${Number(r.amount).toLocaleString()}</td>`;
-          tPend.appendChild(tr);
-        });
-        show('ofertasPendentes');
+      // Ofertas pagas
+      const tPaid = el('tablePagas');
+      tPaid.innerHTML='';
+      (data.paid||[]).forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="py-2">${r.date}</td><td>${r.type}</td><td>${r.description||''}</td><td class="text-right">${Number(r.amount).toLocaleString()}</td>`;
+        tPaid.appendChild(tr);
+      });
+      show('ofertasPagas');
 
-        // Agenda/escala (opção 1: veio junto do memberPortal)
-        let agendaItems = data.agenda || [];
+      // Pendentes
+      const tPend = el('tablePendentes');
+      tPend.innerHTML='';
+      (data.pending||[]).forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="py-2">${r.date}</td><td>${r.type}</td><td>${r.description||''}</td><td class="text-right">${Number(r.amount).toLocaleString()}</td>`;
+        tPend.appendChild(tr);
+      });
+      show('ofertasPendentes');
 
-        // Se quiser garantir atualização: opção 2 — consultar endpoint específico
-        try{
-          const sres = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'getSchedule', code})});
-          const sdata = await sres.json();
-          if(sdata.success) agendaItems = sdata.items;
-        }catch(e){ console.warn('Falha ao atualizar agenda via getSchedule', e); }
+      // Agenda (opção 1: veio no memberPortal)
+      let agendaItems = data.agenda || [];
 
-        const tAg = el('tableAgenda');
-        tAg.innerHTML = '';
-        (agendaItems||[]).forEach(a=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td class="py-2">${a.date}</td><td>${a.time||''}</td><td>${a.location||''}</td><td>${a.theme||''}</td><td>${a.minister||''}</td><td>${a.team||''}</td><td>${a.notes||''}</td>`;
-          tAg.appendChild(tr);
-        });
-        if((agendaItems||[]).length){ show('agendaBox'); }
-      }catch(e){
-        alert('Erro na consulta.');
-        console.error(e);
-      }
+      // Garantir atualização (opção 2):
+      const sdata = await apiCall({action:'getSchedule', code});
+      if(sdata.success) agendaItems = sdata.items;
+
+      const tAg = el('tableAgenda');
+      tAg.innerHTML = '';
+      (agendaItems||[]).forEach(a=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="py-2">${a.date}</td><td>${a.time||''}</td><td>${a.location||''}</td><td>${a.theme||''}</td><td>${a.minister||''}</td><td>${a.team||''}</td><td>${a.notes||''}</td>`;
+        tAg.appendChild(tr);
+      });
+      if((agendaItems||[]).length){ show('agendaBox'); }
     };
 
-    // ------- ADMIN -------
+    // ======= ADMIN =======
     let ADMIN_TOKEN = null;
 
     el('btnLogin').onclick = async ()=>{
       const email = el('adminEmail').value.trim();
       const password = el('adminSenha').value;
       if(!email||!password) return alert('Informe email e senha.');
-      const res = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'adminLogin', email, password})});
-      const data = await res.json();
-      if(!data.success) return alert(data.message||'Login inválido');
+
+      const data = await apiCall({action:'adminLogin', email, password});
+      if(!data.success){ alert(data.message || 'Login inválido'); return; }
       ADMIN_TOKEN = data.token;
-      document.getElementById('adminPanels').classList.remove('hidden');
+      show('adminPanels');
     };
 
     async function callAdmin(action, payload){
       if(!ADMIN_TOKEN){ alert('Faça login primeiro.'); return {success:false}; }
-      const res = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action, token: ADMIN_TOKEN, ...payload})});
-      return res.json();
+      return apiCall({action, token: ADMIN_TOKEN, ...payload});
     }
 
     // Add Member
