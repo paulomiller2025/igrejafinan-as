@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sistema Financeiro — Igreja</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{--bg:#0b1220;--card:#141c2e;--muted:#b0c0dd;--ok:#22c55e;--warn:#eab308;--err:#ef4444}
+    body{background:var(--bg); color:#e6edf7}
+    .card{background:var(--card)}
+    .ghost-input{background:#0e1729;border:1px solid #25314d}
+    .badge{border:1px solid #25314d;background:#0e1729}
+    .table th,.table td{border-bottom:1px solid #25314d}
+  </style>
+</head>
+<body class="min-h-screen">
+  <header class="sticky top-0 z-50 border-b border-slate-700/60 bg-[#0d1628]">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 grid place-items-center font-bold">IG</div>
+        <h1 class="text-xl font-semibold">Sistema Financeiro — Igreja</h1>
+      </div>
+      <nav class="flex items-center gap-2 text-sm">
+        <button id="tabConsulta" class="px-3 py-2 rounded-xl badge">Área do Membro</button>
+        <button id="tabAdmin" class="px-3 py-2 rounded-xl badge">Área do Administrador</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <!-- ========================= Área do Membro ========================= -->
+    <section id="consultaView" class="grid gap-6">
+      <div class="card rounded-2xl p-5">
+        <h2 class="text-lg font-medium mb-3">Consultar minhas ofertas e notificações</h2>
+        <div class="grid md:grid-cols-[260px_1fr_auto] gap-3 items-end">
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Código de Consulta</label>
+            <input id="consultaCodigo" class="w-full ghost-input rounded-xl px-3 py-2" placeholder="Ex.: ABC123" />
+          </div>
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Documento (opcional)</label>
+            <input id="consultaDoc" class="w-full ghost-input rounded-xl px-3 py-2" placeholder="Telefone ou BI (se usado no cadastro)" />
+          </div>
+          <button id="btnConsultar" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Consultar</button>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Guarde seu código em segurança. Caso perca, peça ao administrador para recuperar.</p>
+      </div>
+
+      <div id="membroInfo" class="hidden card rounded-2xl p-5">
+        <div class="flex items-start gap-4">
+          <img id="membroFoto" class="w-20 h-20 object-cover rounded-xl border border-slate-700" src="" alt="foto"/>
+          <div>
+            <h3 id="membroNome" class="text-lg font-semibold"></h3>
+            <div class="text-sm text-slate-300" id="membroRoles"></div>
+            <div class="mt-1 text-xs text-slate-400" id="membroContato"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="notificacoesBox" class="hidden card rounded-2xl p-5">
+        <h3 class="text-base font-semibold mb-3">Notificações</h3>
+        <ul id="notificacoesList" class="grid gap-2"></ul>
+      </div>
+
+      <div id="ofertasPagas" class="hidden card rounded-2xl p-5">
+        <h3 class="text-base font-semibold mb-3">Ofertas/Doações (Pagas)</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full table text-sm">
+            <thead>
+              <tr class="text-left text-slate-300">
+                <th class="py-2">Data</th>
+                <th>Tipo</th>
+                <th>Descrição</th>
+                <th class="text-right">Valor</th>
+              </tr>
+            </thead>
+            <tbody id="tablePagas"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="ofertasPendentes" class="hidden card rounded-2xl p-5">
+        <h3 class="text-base font-semibold mb-3">Ofertas em Falta (Pendentes)</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full table text-sm">
+            <thead>
+              <tr class="text-left text-slate-300">
+                <th class="py-2">Data</th>
+                <th>Tipo</th>
+                <th>Descrição</th>
+                <th class="text-right">Valor</th>
+              </tr>
+            </thead>
+            <tbody id="tablePendentes"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Escala / Agenda para Membro -->
+      <div id="agendaBox" class="hidden card rounded-2xl p-5">
+        <h3 class="text-base font-semibold mb-3">Escala / Agenda de Cultos (Próximos)</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full table text-sm">
+            <thead>
+              <tr class="text-left text-slate-300">
+                <th class="py-2">Data</th>
+                <th>Hora</th>
+                <th>Local</th>
+                <th>Tema</th>
+                <th>Ministro</th>
+                <th>Equipe</th>
+                <th>Notas</th>
+              </tr>
+            </thead>
+            <tbody id="tableAgenda"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= Área do Administrador ========================= -->
+    <section id="adminView" class="hidden grid gap-6">
+      <div class="card rounded-2xl p-5">
+        <h2 class="text-lg font-medium mb-3">Login do Administrador</h2>
+        <div class="grid md:grid-cols-[260px_260px_auto] gap-3 items-end">
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Email</label>
+            <input id="adminEmail" class="w-full ghost-input rounded-xl px-3 py-2" placeholder="admin@igreja.com" />
+          </div>
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Senha</label>
+            <input id="adminSenha" type="password" class="w-full ghost-input rounded-xl px-3 py-2" placeholder="••••••••" />
+          </div>
+          <button id="btnLogin" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Entrar</button>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">O primeiro admin é criado ao executar <code>setup()</code> no Apps Script.</p>
+      </div>
+
+      <div id="adminPanels" class="hidden grid gap-6">
+        <!-- Cadastrar Membro -->
+        <div class="card rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-semibold">Cadastrar Membro</h3>
+            <span id="novoCodigo" class="text-xs text-slate-400"></span>
+          </div>
+          <div class="grid md:grid-cols-4 gap-3">
+            <input id="mNome" class="ghost-input rounded-xl px-3 py-2" placeholder="Nome completo" />
+            <input id="mEmail" class="ghost-input rounded-xl px-3 py-2" placeholder="Email (opcional)" />
+            <input id="mTelefone" class="ghost-input rounded-xl px-3 py-2" placeholder="Telefone (opcional)" />
+            <input id="mDoc" class="ghost-input rounded-xl px-3 py-2" placeholder="Documento/BI (opcional)" />
+            <input id="mFoto" class="ghost-input rounded-xl px-3 py-2 md:col-span-2" placeholder="URL da foto (opcional)" />
+            <input id="mRoles" class="ghost-input rounded-xl px-3 py-2" placeholder="Cargos (ex.: Pastor, Diácono)" />
+            <button id="btnAddMembro" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Salvar</button>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">O sistema gera automaticamente o <strong>Código de Consulta</strong> e exibe acima ao salvar.</p>
+        </div>
+
+        <!-- Lançar Oferta/Doação -->
+        <div class="card rounded-2xl p-5">
+          <h3 class="text-base font-semibold mb-3">Lançar Oferta/Doação</h3>
+          <div class="grid md:grid-cols-6 gap-3 items-end">
+            <input id="dCodigo" class="ghost-input rounded-xl px-3 py-2" placeholder="Código do Membro (ex.: ABC123)" />
+            <input id="dTipo" class="ghost-input rounded-xl px-3 py-2" placeholder="Tipo (Dízimo, Oferta, Missões...)" />
+            <input id="dDescricao" class="ghost-input rounded-xl px-3 py-2" placeholder="Descrição (opcional)" />
+            <input id="dValor" class="ghost-input rounded-xl px-3 py-2" placeholder="Valor (ex.: 5000)" />
+            <select id="dStatus" class="ghost-input rounded-xl px-3 py-2">
+              <option value="PAGO">Pago</option>
+              <option value="PENDENTE">Pendente</option>
+            </select>
+            <button id="btnAddDoacao" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Lançar</button>
+          </div>
+        </div>
+
+        <!-- Notificações -->
+        <div class="card rounded-2xl p-5">
+          <h3 class="text-base font-semibold mb-3">Notificações</h3>
+          <div class="grid md:grid-cols-5 gap-3 items-end">
+            <input id="nTitulo" class="ghost-input rounded-xl px-3 py-2" placeholder="Título" />
+            <input id="nMensagem" class="ghost-input rounded-xl px-3 py-2 md:col-span-2" placeholder="Mensagem" />
+            <input id="nTargets" class="ghost-input rounded-xl px-3 py-2" placeholder="Alvos: ALL ou códigos separados por vírgula" />
+            <button id="btnSendNotif" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4">Enviar</button>
+          </div>
+        </div>
+
+        <!-- Escala / Agenda de Cultos (Admin) -->
+        <div class="card rounded-2xl p-5">
+          <h3 class="text-base font-semibold mb-3">Escala / Agenda de Cultos</h3>
+          <div class="grid md:grid-cols-7 gap-3 items-end">
+            <input id="sDate" type="date" class="ghost-input rounded-xl px-3 py-2" />
+            <input id="sTime" type="time" class="ghost-input rounded-xl px-3 py-2" />
+            <input id="sLocation" class="ghost-input rounded-xl px-3 py-2" placeholder="Local" />
+            <input id="sTheme" class="ghost-input rounded-xl px-3 py-2" placeholder="Tema" />
+            <input id="sMinister" class="ghost-input rounded-xl px-3 py-2" placeholder="Ministro/Preletor" />
+            <input id="sTeam" class="ghost-input rounded-xl px-3 py-2" placeholder="Equipe (louvor, diáconos...)" />
+            <input id="sTargets" class="ghost-input rounded-xl px-3 py-2" placeholder="Alvos: ALL ou códigos" />
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 mt-3">
+            <input id="sNotes" class="ghost-input rounded-xl px-3 py-2" placeholder="Observações (opcional)" />
+            <button id="btnAddSchedule" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Adicionar à Agenda</button>
+          </div>
+        </div>
+
+        <!-- Administração de Admins -->
+        <div class="card rounded-2xl p-5">
+          <h3 class="text-base font-semibold mb-3">Administradores</h3>
+          <div class="grid md:grid-cols-5 gap-3 items-end">
+            <input id="aNome" class="ghost-input rounded-xl px-3 py-2" placeholder="Nome" />
+            <input id="aEmail" class="ghost-input rounded-xl px-3 py-2" placeholder="Email" />
+            <input id="aSenha" type="password" class="ghost-input rounded-xl px-3 py-2" placeholder="Senha" />
+            <input id="aRole" class="ghost-input rounded-xl px-3 py-2" placeholder="Função (ex.: Tesoureiro)" />
+            <button id="btnAddAdmin" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Cadastrar Admin</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="py-8 text-center text-xs text-slate-400">© <span id="year"></span> Igreja — Sistema Financeiro</footer>
+
+  <script>
+    // 👉 Cole aqui a URL do Web App do Apps Script após publicar
+    const API_URL = "https://script.google.com/macros/s/AKfycbwY4uBObBtRJNw1wboFm1NOujLNg0tUjggFoJccIM-_84JPqUS3BIv36CFaTg0n-d_4-A/exec"; // ex.: https://script.google.com/macros/s/AKfycbx.../exec
+
+    const el = (id)=>document.getElementById(id);
+    const show = (n)=>el(n).classList.remove('hidden');
+    const hide = (n)=>el(n).classList.add('hidden');
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Tabs
+    el('tabConsulta').onclick = ()=>{ show('consultaView'); hide('adminView'); };
+    el('tabAdmin').onclick = ()=>{ hide('consultaView'); show('adminView'); };
+
+    // ------- CONSULTA (MEMBRO) -------
+    el('btnConsultar').onclick = async ()=>{
+      const code = el('consultaCodigo').value.trim().toUpperCase();
+      const doc  = el('consultaDoc').value.trim();
+      if(!code){ alert('Informe o código de consulta.'); return; }
+      try{
+        const res = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'memberPortal', code, doc})});
+        const data = await res.json();
+        if(!data.success){ alert(data.message||'Não encontrado.'); return; }
+
+        // Perfil do membro
+        const m = data.member;
+        el('membroFoto').src = m.photo || 'https://i.pravatar.cc/160?img=12';
+        el('membroNome').textContent = m.name + ' — ' + m.code;
+        el('membroRoles').textContent = m.roles?.length? ('Cargos: ' + m.roles.join(', ')) : 'Sem cargos cadastrados';
+        el('membroContato').textContent = [m.email, m.phone].filter(Boolean).join(' • ');
+        show('membroInfo');
+
+        // Notificações
+        const list = el('notificacoesList');
+        list.innerHTML = '';
+        (data.notifications||[]).forEach(n=>{
+          const li = document.createElement('li');
+          li.className='p-3 rounded-xl badge';
+          li.innerHTML = `<div class="text-sm font-medium">${n.title}</div><div class="text-xs text-slate-300">${n.message}</div><div class="text-[10px] text-slate-500 mt-1">${n.date}</div>`;
+          list.appendChild(li);
+        });
+        show('notificacoesBox');
+
+        // Ofertas pagas
+        const tPaid = el('tablePagas');
+        tPaid.innerHTML='';
+        (data.paid||[]).forEach(r=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="py-2">${r.date}</td><td>${r.type}</td><td>${r.description||''}</td><td class="text-right">${Number(r.amount).toLocaleString()}</td>`;
+          tPaid.appendChild(tr);
+        });
+        show('ofertasPagas');
+
+        // Pendentes
+        const tPend = el('tablePendentes');
+        tPend.innerHTML='';
+        (data.pending||[]).forEach(r=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="py-2">${r.date}</td><td>${r.type}</td><td>${r.description||''}</td><td class="text-right">${Number(r.amount).toLocaleString()}</td>`;
+          tPend.appendChild(tr);
+        });
+        show('ofertasPendentes');
+
+        // Agenda/escala (opção 1: veio junto do memberPortal)
+        let agendaItems = data.agenda || [];
+
+        // Se quiser garantir atualização: opção 2 — consultar endpoint específico
+        try{
+          const sres = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'getSchedule', code})});
+          const sdata = await sres.json();
+          if(sdata.success) agendaItems = sdata.items;
+        }catch(e){ console.warn('Falha ao atualizar agenda via getSchedule', e); }
+
+        const tAg = el('tableAgenda');
+        tAg.innerHTML = '';
+        (agendaItems||[]).forEach(a=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="py-2">${a.date}</td><td>${a.time||''}</td><td>${a.location||''}</td><td>${a.theme||''}</td><td>${a.minister||''}</td><td>${a.team||''}</td><td>${a.notes||''}</td>`;
+          tAg.appendChild(tr);
+        });
+        if((agendaItems||[]).length){ show('agendaBox'); }
+      }catch(e){
+        alert('Erro na consulta.');
+        console.error(e);
+      }
+    };
+
+    // ------- ADMIN -------
+    let ADMIN_TOKEN = null;
+
+    el('btnLogin').onclick = async ()=>{
+      const email = el('adminEmail').value.trim();
+      const password = el('adminSenha').value;
+      if(!email||!password) return alert('Informe email e senha.');
+      const res = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'adminLogin', email, password})});
+      const data = await res.json();
+      if(!data.success) return alert(data.message||'Login inválido');
+      ADMIN_TOKEN = data.token;
+      document.getElementById('adminPanels').classList.remove('hidden');
+    };
+
+    async function callAdmin(action, payload){
+      if(!ADMIN_TOKEN){ alert('Faça login primeiro.'); return {success:false}; }
+      const res = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action, token: ADMIN_TOKEN, ...payload})});
+      return res.json();
+    }
+
+    // Add Member
+    el('btnAddMembro').onclick = async ()=>{
+      const payload = {
+        name: el('mNome').value.trim(),
+        email: el('mEmail').value.trim(),
+        phone: el('mTelefone').value.trim(),
+        doc: el('mDoc').value.trim(),
+        photo: el('mFoto').value.trim(),
+        roles: el('mRoles').value.trim()
+      };
+      if(!payload.name) return alert('Informe o nome do membro.');
+      const data = await callAdmin('createMember', payload);
+      if(data.success){
+        el('novoCodigo').textContent = 'Código gerado: ' + data.code;
+        alert('Membro cadastrado! Código: '+data.code);
+      }else alert(data.message||'Erro ao cadastrar');
+    };
+
+    // Add Donation
+    el('btnAddDoacao').onclick = async ()=>{
+      const payload = {
+        code: el('dCodigo').value.trim().toUpperCase(),
+        type: el('dTipo').value.trim(),
+        description: el('dDescricao').value.trim(),
+        amount: el('dValor').value.trim(),
+        status: el('dStatus').value
+      };
+      if(!payload.code || !payload.type || !payload.amount) return alert('Preencha código, tipo e valor.');
+      const data = await callAdmin('addDonation', payload);
+      alert(data.success? 'Lançado com sucesso!' : (data.message||'Erro'));
+    };
+
+    // Notifications
+    el('btnSendNotif').onclick = async ()=>{
+      const payload = {
+        title: el('nTitulo').value.trim(),
+        message: el('nMensagem').value.trim(),
+        targets: el('nTargets').value.trim()||'ALL'
+      };
+      if(!payload.title||!payload.message) return alert('Preencha título e mensagem.');
+      const data = await callAdmin('sendNotification', payload);
+      alert(data.success? 'Notificação enviada!' : (data.message||'Erro'));
+    };
+
+    // Agenda / Schedule (Admin)
+    el('btnAddSchedule').onclick = async ()=>{
+      const payload = {
+        date: el('sDate').value,
+        time: el('sTime').value,
+        location: el('sLocation').value.trim(),
+        theme: el('sTheme').value.trim(),
+        minister: el('sMinister').value.trim(),
+        team: el('sTeam').value.trim(),
+        notes: el('sNotes').value.trim(),
+        targets: el('sTargets').value.trim()||'ALL'
+      };
+      if(!payload.date) return alert('Informe a data.');
+      const data = await callAdmin('addSchedule', payload);
+      alert(data.success? 'Escala adicionada!' : (data.message||'Erro'));
+    };
+  </script>
+</body>
+</html>
