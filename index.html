@@ -3,48 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sistema Financeiro — Igreja</title>
+  <title>Sistema Financeiro — Igreja (v2 Pro)</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root{--bg:#0b1220;--card:#141c2e}
-    body{background:var(--bg); color:#e6edf7}
+    body{background:var(--bg);color:#e6edf7}
     .card{background:var(--card)}
     .ghost-input{background:#0e1729;border:1px solid #25314d}
     .badge{border:1px solid #25314d;background:#0e1729}
     .table th,.table td{border-bottom:1px solid #25314d}
+    /* Progress Overlay */
+    #overlay{position:fixed;inset:0;background:rgba(10,13,25,.6);display:none;place-items:center;z-index:100}
+    .bar{width:280px;height:10px;background:#0e1729;border:1px solid #25314d;border-radius:10px;overflow:hidden}
+    .bar>i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#6366f1,#22c55e);animation:load 1.2s infinite}
+    @keyframes load {0%{width:0%}50%{width:80%}100%{width:100%}}
   </style>
 </head>
 <body class="min-h-screen">
+  <!-- Progress overlay -->
+  <div id="overlay">
+    <div class="card p-6 rounded-2xl text-sm grid gap-3">
+      <div id="ovText">Processando…</div>
+      <div class="bar rounded-xl"><i></i></div>
+    </div>
+  </div>
+
   <header class="sticky top-0 z-50 border-b border-slate-700/60 bg-[#0d1628]">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-xl bg-indigo-600 grid place-items-center font-bold">IG</div>
-        <h1 class="text-xl font-semibold">Sistema Financeiro — Igreja</h1>
+        <h1 class="text-xl font-semibold">Sistema Financeiro — Igreja (v2 Pro)</h1>
       </div>
-      <nav class="flex items-center gap-2 text-sm">
-        <button id="tabConsulta" class="px-3 py-2 rounded-xl badge">Área do Membro</button>
-        <button id="tabAdmin" class="px-3 py-2 rounded-xl badge">Área do Administrador</button>
+      <nav class="flex flex-wrap items-center gap-2 text-sm">
+        <button id="tabConsulta" class="px-3 py-2 rounded-xl badge">Membro</button>
+        <button id="tabAdmin" class="px-3 py-2 rounded-xl badge">Admin</button>
       </nav>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-6">
-    <!-- ========== Área do Membro (Consulta) ========== -->
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <!-- =================== ÁREA DO MEMBRO =================== -->
     <section id="consultaView" class="grid gap-6">
       <div class="card rounded-2xl p-5">
-        <h2 class="text-lg font-medium mb-3">Consultar minhas ofertas e notificações</h2>
-        <div class="grid md:grid-cols-[260px_1fr_auto] gap-3 items-end">
-          <div>
-            <label class="block text-sm text-slate-300 mb-1">Código de Consulta</label>
-            <input id="consultaCodigo" class="w-full ghost-input rounded-xl px-3 py-2" placeholder="Ex.: ABC123" />
-          </div>
-          <div>
-            <label class="block text-sm text-slate-300 mb-1">Documento (opcional)</label>
-            <input id="consultaDoc" class="w-full ghost-input rounded-xl px-3 py-2" placeholder="Telefone ou BI (se usado no cadastro)" />
-          </div>
+        <h2 class="text-lg font-medium mb-3">Consultar</h2>
+        <div class="grid md:grid-cols-[220px_1fr_auto] gap-3 items-end">
+          <input id="consultaCodigo" class="ghost-input rounded-xl px-3 py-2" placeholder="Código (ex.: ABC123)"/>
+          <input id="consultaDoc" class="ghost-input rounded-xl px-3 py-2" placeholder="Documento (opcional)"/>
           <button id="btnConsultar" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Consultar</button>
         </div>
-        <p class="text-xs text-slate-400 mt-2">Guarde seu código. Se perder, peça ao administrador para recuperar.</p>
       </div>
 
       <div id="membroInfo" class="hidden card rounded-2xl p-5">
@@ -69,10 +76,7 @@
           <table class="w-full table text-sm">
             <thead>
               <tr class="text-left text-slate-300">
-                <th class="py-2">Data</th>
-                <th>Tipo</th>
-                <th>Descrição</th>
-                <th class="text-right">Valor</th>
+                <th class="py-2">Data</th><th>Tipo</th><th>Método</th><th>Descrição</th><th class="text-right">Valor (Kz)</th>
               </tr>
             </thead>
             <tbody id="tablePagas"></tbody>
@@ -86,10 +90,7 @@
           <table class="w-full table text-sm">
             <thead>
               <tr class="text-left text-slate-300">
-                <th class="py-2">Data</th>
-                <th>Tipo</th>
-                <th>Descrição</th>
-                <th class="text-right">Valor</th>
+                <th class="py-2">Referência (AAAA-MM)</th><th>Tipo</th><th>Descrição</th><th class="text-right">Valor (Kz)</th><th>Ação</th>
               </tr>
             </thead>
             <tbody id="tablePendentes"></tbody>
@@ -97,118 +98,214 @@
         </div>
       </div>
 
-      <!-- Escala / Agenda para Membro -->
       <div id="agendaBox" class="hidden card rounded-2xl p-5">
-        <h3 class="text-base font-semibold mb-3">Escala / Agenda de Cultos (Próximos)</h3>
+        <h3 class="text-base font-semibold mb-3">Escala / Agenda de Cultos</h3>
         <div class="overflow-x-auto">
           <table class="w-full table text-sm">
             <thead>
               <tr class="text-left text-slate-300">
-                <th class="py-2">Data</th>
-                <th>Hora</th>
-                <th>Local</th>
-                <th>Tema</th>
-                <th>Ministro</th>
-                <th>Equipe</th>
-                <th>Notas</th>
+                <th class="py-2">Data</th><th>Hora</th><th>Local</th><th>Tema</th><th>Ministro</th><th>Equipe</th><th>Notas</th>
               </tr>
             </thead>
             <tbody id="tableAgenda"></tbody>
           </table>
         </div>
       </div>
+
+      <!-- Chat do Membro -->
+      <div id="chatMemberBox" class="hidden card rounded-2xl p-5">
+        <h3 class="text-base font-semibold mb-3">Chat / Suporte Técnico</h3>
+        <div id="chatMsgs" class="h-64 overflow-y-auto border border-slate-700 rounded-xl p-3 mb-3 bg-[#0e1729]"></div>
+        <div class="grid grid-cols-[1fr_auto] gap-2">
+          <input id="chatText" class="ghost-input rounded-xl px-3 py-2" placeholder="Escreva sua mensagem..."/>
+          <button id="btnChatSend" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Enviar</button>
+        </div>
+      </div>
     </section>
 
-    <!-- ========== Área do Administrador ========== -->
+    <!-- =================== ÁREA DO ADMIN =================== -->
     <section id="adminView" class="hidden grid gap-6">
       <div class="card rounded-2xl p-5">
         <h2 class="text-lg font-medium mb-3">Login do Administrador</h2>
         <div class="grid md:grid-cols-[260px_260px_auto] gap-3 items-end">
-          <div>
-            <label class="block text-sm text-slate-300 mb-1">Email</label>
-            <input id="adminEmail" class="w-full ghost-input rounded-xl px-3 py-2" placeholder="admin@igreja.com" />
-          </div>
-          <div>
-            <label class="block text-sm text-slate-300 mb-1">Senha</label>
-            <input id="adminSenha" type="password" class="w-full ghost-input rounded-xl px-3 py-2" placeholder="••••••••" />
-          </div>
+          <input id="adminEmail" class="w-full ghost-input rounded-xl px-3 py-2" placeholder="admin@igreja.com"/>
+          <input id="adminSenha" type="password" class="w-full ghost-input rounded-xl px-3 py-2" placeholder="••••••••"/>
           <button id="btnLogin" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Entrar</button>
         </div>
-        <p class="text-xs text-slate-400 mt-2">O primeiro admin é criado ao executar <code>setup()</code> no Apps Script.</p>
       </div>
 
       <div id="adminPanels" class="hidden grid gap-6">
-        <!-- Cadastrar Membro -->
-        <div class="card rounded-2xl p-5">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-base font-semibold">Cadastrar Membro</h3>
-            <span id="novoCodigo" class="text-xs text-slate-400"></span>
+        <!-- Igrejas (apenas Sede) -->
+        <div id="panelChurch" class="hidden card rounded-2xl p-5">
+          <h3 class="text-base font-semibold mb-3">Igrejas / Congregações</h3>
+          <div class="grid md:grid-cols-4 gap-3 items-end">
+            <input id="chName" class="ghost-input rounded-xl px-3 py-2" placeholder="Nome da Igreja"/>
+            <input id="chCode" class="ghost-input rounded-xl px-3 py-2" placeholder="Código (ex.: SEDE, CONG1)"/>
+            <label class="text-xs"><input type="checkbox" id="chIsHQ" class="mr-1">É Sede (HQ)</label>
+            <button id="btnAddChurch" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Cadastrar</button>
           </div>
-          <div class="grid md:grid-cols-4 gap-3">
-            <input id="mNome" class="ghost-input rounded-xl px-3 py-2" placeholder="Nome completo" />
-            <input id="mEmail" class="ghost-input rounded-xl px-3 py-2" placeholder="Email (opcional)" />
-            <input id="mTelefone" class="ghost-input rounded-xl px-3 py-2" placeholder="Telefone (opcional)" />
-            <input id="mDoc" class="ghost-input rounded-xl px-3 py-2" placeholder="Documento/BI (opcional)" />
-            <input id="mFoto" class="ghost-input rounded-xl px-3 py-2 md:col-span-2" placeholder="URL da foto (opcional)" />
-            <input id="mRoles" class="ghost-input rounded-xl px-3 py-2" placeholder="Cargos (ex.: Pastor, Diácono)" />
-            <button id="btnAddMembro" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Salvar</button>
+          <div class="grid md:grid-cols-3 gap-3 items-end mt-3">
+            <input id="chIdEdit" class="ghost-input rounded-xl px-3 py-2" placeholder="ID para editar/remover"/>
+            <button id="btnEditChurch" class="rounded-xl bg-slate-600 hover:bg-slate-500 px-4">Editar</button>
+            <button id="btnDelChurch" class="rounded-xl bg-rose-600 hover:bg-rose-500 px-4">Remover</button>
           </div>
+          <div class="mt-3 text-xs">Lista: <span id="churchList" class="text-slate-300"></span></div>
         </div>
 
-        <!-- Lançar Oferta/Doação -->
+        <!-- Membros CRUD -->
         <div class="card rounded-2xl p-5">
-          <h3 class="text-base font-semibold mb-3">Lançar Oferta/Doação</h3>
-          <div class="grid md:grid-cols-6 gap-3 items-end">
-            <input id="dCodigo" class="ghost-input rounded-xl px-3 py-2" placeholder="Código do Membro (ex.: ABC123)" />
-            <input id="dTipo" class="ghost-input rounded-xl px-3 py-2" placeholder="Tipo (Dízimo, Oferta, Missões...)" />
-            <input id="dDescricao" class="ghost-input rounded-xl px-3 py-2" placeholder="Descrição (opcional)" />
-            <input id="dValor" class="ghost-input rounded-xl px-3 py-2" placeholder="Valor (ex.: 5000)" />
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-semibold">Membros (cadastrar / consultar / editar / excluir)</h3>
+            <span id="novoCodigo" class="text-xs text-slate-400"></span>
+          </div>
+          <div class="grid md:grid-cols-6 gap-3">
+            <input id="mCodigo" class="ghost-input rounded-xl px-3 py-2" placeholder="Código (p/ editar/excluir)"/>
+            <input id="mNome" class="ghost-input rounded-xl px-3 py-2" placeholder="Nome"/>
+            <input id="mEmail" class="ghost-input rounded-xl px-3 py-2" placeholder="Email"/>
+            <input id="mTelefone" class="ghost-input rounded-xl px-3 py-2" placeholder="Telefone"/>
+            <input id="mDoc" class="ghost-input rounded-xl px-3 py-2" placeholder="Documento/BI"/>
+            <input id="mFoto" class="ghost-input rounded-xl px-3 py-2" placeholder="URL da foto (opcional)"/>
+            <input id="mRoles" class="ghost-input rounded-xl px-3 py-2" placeholder="Cargos (Pastor, Diácono...)"/>
+            <div class="col-span-full flex flex-wrap gap-2">
+              <button id="btnAddMembro" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Cadastrar</button>
+              <button id="btnGetMembro" class="rounded-xl bg-slate-600 hover:bg-slate-500 px-4">Consultar</button>
+              <button id="btnEditMembro" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4">Salvar Edição</button>
+              <button id="btnDelMembro" class="rounded-xl bg-rose-600 hover:bg-rose-500 px-4">Excluir</button>
+              <label class="text-xs">Upload Foto:
+                <input id="mFotoFile" type="file" accept="image/*" class="block text-xs mt-1"/>
+              </label>
+              <button id="btnUploadFoto" class="rounded-xl bg-yellow-600 hover:bg-yellow-500 px-4">Enviar Foto</button>
+            </div>
+          </div>
+          <div id="membroConsultaBox" class="hidden mt-4 text-sm"></div>
+        </div>
+
+        <!-- Ofertas/Doações + Quitar pendente -->
+        <div class="card rounded-2xl p-5">
+          <h3 class="text-base font-semibold mb-3">Ofertas / Doações</h3>
+          <div class="grid md:grid-cols-7 gap-3 items-end">
+            <input id="dCodigo" class="ghost-input rounded-xl px-3 py-2" placeholder="Código do Membro"/>
+            <input id="dTipo" class="ghost-input rounded-xl px-3 py-2" placeholder="Tipo (Dízimo, Oferta Mensal...)"/>
+            <input id="dDescricao" class="ghost-input rounded-xl px-3 py-2" placeholder="Descrição"/>
+            <input id="dValor" class="ghost-input rounded-xl px-3 py-2" placeholder="Valor Kz"/>
+            <select id="dMetodo" class="ghost-input rounded-xl px-3 py-2">
+              <option>Dinheiro</option><option>Depósito</option><option>Transferência</option>
+            </select>
             <select id="dStatus" class="ghost-input rounded-xl px-3 py-2">
-              <option value="PAGO">Pago</option>
-              <option value="PENDENTE">Pendente</option>
+              <option value="PAGO">Pago</option><option value="PENDENTE">Pendente</option>
             </select>
             <button id="btnAddDoacao" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Lançar</button>
+          </div>
+          <div class="grid md:grid-cols-4 gap-3 items-end mt-3">
+            <input id="qId" class="ghost-input rounded-xl px-3 py-2" placeholder="ID pendente"/>
+            <select id="qMetodo" class="ghost-input rounded-xl px-3 py-2">
+              <option>Dinheiro</option><option>Depósito</option><option>Transferência</option>
+            </select>
+            <input id="qDescricao" class="ghost-input rounded-xl px-3 py-2" placeholder="Obs. (opcional)"/>
+            <button id="btnQuitar" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4">Quitar Pendente</button>
           </div>
         </div>
 
         <!-- Notificações -->
         <div class="card rounded-2xl p-5">
           <h3 class="text-base font-semibold mb-3">Notificações</h3>
-          <div class="grid md:grid-cols-5 gap-3 items-end">
-            <input id="nTitulo" class="ghost-input rounded-xl px-3 py-2" placeholder="Título" />
-            <input id="nMensagem" class="ghost-input rounded-xl px-3 py-2 md:col-span-2" placeholder="Mensagem" />
-            <input id="nTargets" class="ghost-input rounded-xl px-3 py-2" placeholder="Alvos: ALL ou códigos separados por vírgula" />
+          <div class="grid md:grid-cols-6 gap-3 items-end">
+            <input id="nTitulo" class="ghost-input rounded-xl px-3 py-2" placeholder="Título"/>
+            <input id="nMensagem" class="ghost-input rounded-xl px-3 py-2 md:col-span-2" placeholder="Mensagem"/>
+            <input id="nTargets" class="ghost-input rounded-xl px-3 py-2" placeholder="Alvos: ALL ou códigos"/>
+            <input id="nExpire" type="datetime-local" class="ghost-input rounded-xl px-3 py-2"/>
             <button id="btnSendNotif" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4">Enviar</button>
           </div>
+          <div class="grid md:grid-cols-3 gap-3 items-end mt-3">
+            <input id="gnId" class="ghost-input rounded-xl px-3 py-2" placeholder="ID para editar/remover"/>
+            <button id="btnNotifEdit" class="rounded-xl bg-slate-600 hover:bg-slate-500 px-4">Editar</button>
+            <button id="btnNotifDel" class="rounded-xl bg-rose-600 hover:bg-rose-500 px-4">Remover</button>
+          </div>
+          <div class="mt-3 text-xs">Ativas: <span id="notifList" class="text-slate-300"></span></div>
         </div>
 
-        <!-- Escala / Agenda de Cultos (Admin) -->
+        <!-- Agenda / Escala -->
         <div class="card rounded-2xl p-5">
           <h3 class="text-base font-semibold mb-3">Escala / Agenda de Cultos</h3>
-          <div class="grid md:grid-cols-7 gap-3 items-end">
-            <input id="sDate" type="date" class="ghost-input rounded-xl px-3 py-2" />
-            <input id="sTime" type="time" class="ghost-input rounded-xl px-3 py-2" />
-            <input id="sLocation" class="ghost-input rounded-xl px-3 py-2" placeholder="Local" />
-            <input id="sTheme" class="ghost-input rounded-xl px-3 py-2" placeholder="Tema" />
-            <input id="sMinister" class="ghost-input rounded-xl px-3 py-2" placeholder="Ministro/Preletor" />
-            <input id="sTeam" class="ghost-input rounded-xl px-3 py-2" placeholder="Equipe (louvor, diáconos...)" />
-            <input id="sTargets" class="ghost-input rounded-xl px-3 py-2" placeholder="Alvos: ALL ou códigos" />
+          <div class="grid md:grid-cols-8 gap-3 items-end">
+            <input id="sId" class="ghost-input rounded-xl px-3 py-2" placeholder="ID (editar/remover)"/>
+            <input id="sDate" type="date" class="ghost-input rounded-xl px-3 py-2"/>
+            <input id="sTime" type="time" class="ghost-input rounded-xl px-3 py-2"/>
+            <input id="sLocation" class="ghost-input rounded-xl px-3 py-2" placeholder="Local"/>
+            <input id="sTheme" class="ghost-input rounded-xl px-3 py-2" placeholder="Tema"/>
+            <input id="sMinister" class="ghost-input rounded-xl px-3 py-2" placeholder="Ministro"/>
+            <input id="sTeam" class="ghost-input rounded-xl px-3 py-2" placeholder="Equipe"/>
+            <input id="sTargets" class="ghost-input rounded-xl px-3 py-2" placeholder="ALvos (ALL ou códigos)"/>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 mt-3">
-            <input id="sNotes" class="ghost-input rounded-xl px-3 py-2" placeholder="Observações (opcional)" />
-            <button id="btnAddSchedule" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Adicionar à Agenda</button>
+          <div class="grid grid-cols-[1fr_auto_auto] gap-3 mt-3">
+            <input id="sNotes" class="ghost-input rounded-xl px-3 py-2" placeholder="Notas"/>
+            <button id="btnAddSchedule" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Adicionar</button>
+            <div class="flex gap-2">
+              <button id="btnUpdSchedule" class="rounded-xl bg-slate-600 hover:bg-slate-500 px-4">Editar</button>
+              <button id="btnDelSchedule" class="rounded-xl bg-rose-600 hover:bg-rose-500 px-4">Remover</button>
+            </div>
           </div>
         </div>
 
-        <!-- Administração de Admins -->
+        <!-- Administradores -->
         <div class="card rounded-2xl p-5">
           <h3 class="text-base font-semibold mb-3">Administradores</h3>
-          <div class="grid md:grid-cols-5 gap-3 items-end">
-            <input id="aNome" class="ghost-input rounded-xl px-3 py-2" placeholder="Nome" />
-            <input id="aEmail" class="ghost-input rounded-xl px-3 py-2" placeholder="Email" />
-            <input id="aSenha" type="password" class="ghost-input rounded-xl px-3 py-2" placeholder="Senha" />
-            <input id="aRole" class="ghost-input rounded-xl px-3 py-2" placeholder="Função (ex.: Tesoureiro)" />
-            <button id="btnAddAdmin" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Cadastrar Admin</button>
+          <div class="grid md:grid-cols-6 gap-3 items-end">
+            <input id="aNome" class="ghost-input rounded-xl px-3 py-2" placeholder="Nome"/>
+            <input id="aEmail" class="ghost-input rounded-xl px-3 py-2" placeholder="Email"/>
+            <input id="aSenha" type="password" class="ghost-input rounded-xl px-3 py-2" placeholder="Senha"/>
+            <input id="aRoleAdm" class="ghost-input rounded-xl px-3 py-2" placeholder="Cargo Administrativo"/>
+            <input id="aRoleEcl" class="ghost-input rounded-xl px-3 py-2" placeholder="Cargo Eclesiástico"/>
+            <button id="btnAddAdmin" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Cadastrar</button>
+          </div>
+          <div class="grid md:grid-cols-4 gap-3 items-end mt-3">
+            <button id="btnListAdmins" class="rounded-xl bg-slate-600 hover:bg-slate-500 px-4">Listar</button>
+            <input id="adIdDel" class="ghost-input rounded-xl px-3 py-2" placeholder="ID p/ excluir"/>
+            <button id="btnDelAdmin" class="rounded-xl bg-rose-600 hover:bg-rose-500 px-4">Excluir</button>
+            <div></div>
+          </div>
+          <div class="grid md:grid-cols-4 gap-3 items-end mt-3">
+            <input id="myNewEmail" class="ghost-input rounded-xl px-3 py-2" placeholder="Meu novo email"/>
+            <input id="myNewPass" type="password" class="ghost-input rounded-xl px-3 py-2" placeholder="Minha nova senha"/>
+            <input id="myNewAdm" class="ghost-input rounded-xl px-3 py-2" placeholder="Meu cargo administrativo"/>
+            <input id="myNewEcl" class="ghost-input rounded-xl px-3 py-2" placeholder="Meu cargo eclesiástico"/>
+            <button id="btnEditSelf" class="rounded-xl bg-yellow-600 hover:bg-yellow-500 px-4 col-span-full md:col-span-1">Atualizar Meus Dados</button>
+          </div>
+          <div id="adminsList" class="mt-3 text-sm"></div>
+        </div>
+
+        <!-- Financeiro: Saldos / Retiradas / Relatórios / Export -->
+        <div class="card rounded-2xl p-5">
+          <h3 class="text-base font-semibold mb-3">Financeiro</h3>
+          <div id="balancesBox" class="text-sm grid md:grid-cols-4 gap-3 mb-3"></div>
+          <div class="grid md:grid-cols-4 gap-3 items-end mb-3">
+            <input id="exValor" class="ghost-input rounded-xl px-3 py-2" placeholder="Retirada (Kz)"/>
+            <input id="exMotivo" class="ghost-input rounded-xl px-3 py-2" placeholder="Para onde foi"/>
+            <input id="exQuem" class="ghost-input rounded-xl px-3 py-2" placeholder="Quem retirou"/>
+            <button id="btnAddExpense" class="rounded-xl bg-rose-600 hover:bg-rose-500 px-4">Registrar Retirada</button>
+          </div>
+          <div class="grid md:grid-cols-[1fr_auto_auto_auto] gap-3 items-end">
+            <input id="repAno" class="ghost-input rounded-xl px-3 py-2" placeholder="Ano (ex.: 2025)"/>
+            <button id="btnResumoMensal" class="rounded-xl bg-slate-600 hover:bg-slate-500 px-4">Resumo Mensal</button>
+            <button id="btnExportCSV" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4">Exportar CSV</button>
+            <button id="btnExportPDF" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4">Exportar PDF</button>
+          </div>
+          <canvas id="chartFinance" class="mt-4"></canvas>
+          <div id="mensalDetalhe" class="mt-4 text-sm"></div>
+        </div>
+
+        <!-- Chat (Admin) -->
+        <div class="card rounded-2xl p-5">
+          <h3 class="text-base font-semibold mb-3">Chat — Responder Membro</h3>
+          <div class="grid md:grid-cols-[1fr_auto] gap-3 items-end">
+            <input id="threadIdAdmin" class="ghost-input rounded-xl px-3 py-2" placeholder="Thread ID"/>
+            <div class="text-xs text-slate-400">OBS: o membro vê o threadId na área dele (você pode pedir ao membro).</div>
+          </div>
+          <div id="chatMsgsAdmin" class="h-64 overflow-y-auto border border-slate-700 rounded-xl p-3 my-3 bg-[#0e1729]"></div>
+          <div class="grid grid-cols-[1fr_auto_auto] gap-2">
+            <input id="chatTextAdmin" class="ghost-input rounded-xl px-3 py-2" placeholder="Responder..."/>
+            <button id="btnLoadThread" class="rounded-xl bg-slate-600 hover:bg-slate-500 px-4">Carregar</button>
+            <button id="btnChatSendAdmin" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4">Enviar</button>
           </div>
         </div>
       </div>
@@ -218,9 +315,9 @@
   <footer class="py-8 text-center text-xs text-slate-400">© <span id="year"></span> Igreja — Sistema Financeiro</footer>
 
   <script>
-    // ======= CONFIG =======
-    const API_URL = "https://script.google.com/macros/s/AKfycbzdvPIC2PNpWDKvwURgHuum55n0K6h5HJM8gPq4wzfs4MqPLfTnyGhTqJXilQoAzwo/exec"; // <-- cole aqui a URL /exec
-    // ======================
+    // ================== CONFIG ==================
+    const API_URL = "PASTE_YOUR_WEB_APP_URL_HERE"; // cole sua URL /exec
+    // ============================================
 
     const el = (id)=>document.getElementById(id);
     const show = (n)=>el(n).classList.remove('hidden');
@@ -231,158 +328,407 @@
     el('tabConsulta').onclick = ()=>{ show('consultaView'); hide('adminView'); };
     el('tabAdmin').onclick = ()=>{ hide('consultaView'); show('adminView'); };
 
-    // ======= Helper sem CORS (URL-encoded) =======
-    async function apiCall(payloadObj){
+    // Progress bar overlay
+    const overlay = {
+      on(msg){ el('ovText').textContent = msg||'Processando…'; document.getElementById('overlay').style.display='grid'; },
+      off(){ document.getElementById('overlay').style.display='none'; }
+    };
+
+    // Helper sem CORS
+    async function apiCall(payload){
       const form = new URLSearchParams();
-      form.append('payload', JSON.stringify(payloadObj));
-      const resp = await fetch(API_URL, { method: 'POST', body: form });
-      const text = await resp.text();
-      try { return JSON.parse(text); }
-      catch { return {success:false, message:'Resposta não-JSON da API', raw:text}; }
+      form.append('payload', JSON.stringify(payload));
+      overlay.on('Processando…');
+      try{
+        const resp = await fetch(API_URL, {method:'POST', body: form});
+        const text = await resp.text();
+        try { return JSON.parse(text); } catch { return {success:false, message:'Resposta não-JSON', raw:text}; }
+      } finally { overlay.off(); }
     }
 
-    // ======= CONSULTA (Membro) =======
+    // ================== MEMBRO ==================
+    let MEMBER_CODE = null;
+    let MEMBER_THREAD = null;
+    let chatTimerMember = null;
+
     el('btnConsultar').onclick = async ()=>{
       const code = el('consultaCodigo').value.trim().toUpperCase();
       const doc  = el('consultaDoc').value.trim();
-      if(!code){ alert('Informe o código de consulta.'); return; }
-
+      if(!code) return alert('Informe o código.');
       const data = await apiCall({action:'memberPortal', code, doc});
-      if(!data.success){ alert(data.message||'Não encontrado.'); return; }
+      if(!data.success) return alert(data.message||'Não encontrado.');
 
+      MEMBER_CODE = code;
+
+      // Perfil
       const m = data.member;
       el('membroFoto').src = m.photo || 'https://i.pravatar.cc/160?img=12';
       el('membroNome').textContent = m.name + ' — ' + m.code;
-      el('membroRoles').textContent = m.roles?.length? ('Cargos: ' + m.roles.join(', ')) : 'Sem cargos cadastrados';
+      el('membroRoles').textContent = (m.roles||[]).length? ('Cargos: ' + m.roles.join(', ')) : 'Sem cargos';
       el('membroContato').textContent = [m.email, m.phone].filter(Boolean).join(' • ');
       show('membroInfo');
 
-      // Notificações
-      const list = el('notificacoesList');
-      list.innerHTML = '';
+      // Notificações + contador
+      const list = el('notificacoesList'); list.innerHTML='';
       (data.notifications||[]).forEach(n=>{
-        const li = document.createElement('li');
-        li.className='p-3 rounded-xl badge';
-        li.innerHTML = `<div class="text-sm font-medium">${n.title}</div><div class="text-xs text-slate-300">${n.message}</div><div class="text-[10px] text-slate-500 mt-1">${n.date}</div>`;
+        const li=document.createElement('li'); li.className='p-3 rounded-xl badge flex items-center justify-between gap-3';
+        li.innerHTML = `<div><div class="text-sm font-medium">${n.title}</div><div class="text-xs text-slate-300">${n.message}</div></div>
+                        <div class="text-xs text-slate-400"><span class="countdown" data-expire="${n.expiresAt||''}"></span></div>`;
         list.appendChild(li);
       });
-      show('notificacoesBox');
+      show('notificacoesBox'); startCountdowns();
 
-      // Ofertas pagas
-      const tPaid = el('tablePagas');
-      tPaid.innerHTML='';
+      // Pagas
+      const tPaid = el('tablePagas'); tPaid.innerHTML='';
       (data.paid||[]).forEach(r=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="py-2">${r.date}</td><td>${r.type}</td><td>${r.description||''}</td><td class="text-right">${Number(r.amount).toLocaleString()}</td>`;
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td class="py-2">${r.date}</td><td>${r.type}</td><td>${r.method||''}</td><td>${r.description||''}</td>
+                        <td class="text-right">${Number(r.amount).toLocaleString('pt-AO')} Kz</td>`;
         tPaid.appendChild(tr);
       });
       show('ofertasPagas');
 
-      // Pendentes
-      const tPend = el('tablePendentes');
-      tPend.innerHTML='';
+      // Pendentes (derivados, quando seu backend enviar com id/ref)
+      const tPend = el('tablePendentes'); tPend.innerHTML='';
       (data.pending||[]).forEach(r=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="py-2">${r.date}</td><td>${r.type}</td><td>${r.description||''}</td><td class="text-right">${Number(r.amount).toLocaleString()}</td>`;
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td class="py-2">${r.ref||r.date||''}</td><td>${r.type||''}</td><td>${r.description||''}</td>
+                        <td class="text-right">${Number(r.amount||0).toLocaleString('pt-AO')} Kz</td>
+                        <td>${r.id?`<button data-id="${r.id}" class="quitar rounded bg-indigo-600 px-2 text-xs">Quitar</button>`:''}</td>`;
         tPend.appendChild(tr);
       });
       show('ofertasPendentes');
+      // Delegar eventos de quitar
+      tPend.querySelectorAll('.quitar').forEach(btn => btn.onclick = async ()=>{
+        const id = btn.getAttribute('data-id');
+        const res = await apiCall({action:'settlePending', token: ADMIN_TOKEN, id, method:'Dinheiro' });
+        alert(res.success?'Pendente quitado!':(res.message||'Erro'));
+      });
 
-      // Agenda (opção 1: veio no memberPortal)
-      let agendaItems = data.agenda || [];
-
-      // Garantir atualização (opção 2):
+      // Agenda
       const sdata = await apiCall({action:'getSchedule', code});
-      if(sdata.success) agendaItems = sdata.items;
-
-      const tAg = el('tableAgenda');
-      tAg.innerHTML = '';
-      (agendaItems||[]).forEach(a=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="py-2">${a.date}</td><td>${a.time||''}</td><td>${a.location||''}</td><td>${a.theme||''}</td><td>${a.minister||''}</td><td>${a.team||''}</td><td>${a.notes||''}</td>`;
+      const tAg = el('tableAgenda'); tAg.innerHTML='';
+      (sdata.items||[]).forEach(a=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td class="py-2">${a.date}</td><td>${a.time||''}</td><td>${a.location||''}</td>
+                        <td>${a.theme||''}</td><td>${a.minister||''}</td><td>${a.team||''}</td><td>${a.notes||''}</td>`;
         tAg.appendChild(tr);
       });
-      if((agendaItems||[]).length){ show('agendaBox'); }
+      if((sdata.items||[]).length) show('agendaBox');
+
+      // Chat: cria/continua thread (envie “Olá” vazio só ao enviar msg)
+      show('chatMemberBox');
+      // Para obter um threadId inicial, envie a primeira msg; guardaremos quando enviar.
+      if(chatTimerMember){ clearInterval(chatTimerMember); chatTimerMember=null; }
+      el('chatMsgs').innerHTML = `<div class="text-xs text-slate-400">Envie a primeira mensagem para abrir o chat.</div>`;
     };
 
-    // ======= ADMIN =======
+    function startCountdowns(){
+      const spans = document.querySelectorAll('.countdown');
+      function tick(){
+        spans.forEach(s=>{
+          const ex=s.getAttribute('data-expire'); if(!ex){ s.textContent=''; return; }
+          const t = new Date(ex).getTime() - Date.now();
+          if(t<=0){ s.textContent='expirou'; return; }
+          const d=Math.floor(t/86400000), h=Math.floor((t%86400000)/3600000), m=Math.floor((t%3600000)/60000);
+          s.textContent=`${d}d ${h}h ${m}m`;
+        });
+      }
+      tick(); setInterval(tick, 60000);
+    }
+
+    el('btnChatSend').onclick = async ()=>{
+      const txt = el('chatText').value.trim(); if(!txt) return;
+      el('chatText').value='';
+      // Se não há thread ainda, sendMemberMsg cria
+      const res = await apiCall({action:'sendMemberMsg', code: MEMBER_CODE, message: txt});
+      if(res.success){ MEMBER_THREAD = res.threadId; loadChatMember(); if(!chatTimerMember) chatTimerMember=setInterval(loadChatMember, 5000); }
+    };
+    async function loadChatMember(){
+      if(!MEMBER_THREAD) return;
+      const r = await apiCall({action:'fetchChat', threadId: MEMBER_THREAD});
+      const box = el('chatMsgs'); box.innerHTML='';
+      (r.items||[]).forEach(m=>{
+        const isAdmin = (m.from==='admin');
+        const div = document.createElement('div');
+        div.className = 'mb-2 ' + (isAdmin?'text-emerald-300':'text-slate-200');
+        div.innerHTML = `<b>${isAdmin?'Admin':'Você'}:</b> ${m.message} <span class="text-[10px] text-slate-500">${new Date(m.ts).toLocaleString()}</span>`;
+        box.appendChild(div);
+      });
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // ================== ADMIN ==================
     let ADMIN_TOKEN = null;
+    let ADMIN_INFO  = null;
+    let chatTimerAdmin = null;
 
     el('btnLogin').onclick = async ()=>{
       const email = el('adminEmail').value.trim();
       const password = el('adminSenha').value;
       if(!email||!password) return alert('Informe email e senha.');
-
       const data = await apiCall({action:'adminLogin', email, password});
-      if(!data.success){ alert(data.message || 'Login inválido'); return; }
+      if(!data.success) return alert(data.message||'Login inválido');
       ADMIN_TOKEN = data.token;
+      // opcional: dados do admin
+      const me = await apiCall({action:'adminMe', token: ADMIN_TOKEN});
+      ADMIN_INFO = me.success? me.me : null;
       show('adminPanels');
+      if(ADMIN_INFO && ADMIN_INFO.isHQ) show('panelChurch');
+      refreshBalances();
+      refreshNotifsList();
+      refreshChurches();
     };
 
-    async function callAdmin(action, payload){
-      if(!ADMIN_TOKEN){ alert('Faça login primeiro.'); return {success:false}; }
+    async function callAdmin(action, payload={}){
+      if(!ADMIN_TOKEN){ alert('Faça login.'); return {success:false}; }
       return apiCall({action, token: ADMIN_TOKEN, ...payload});
     }
 
-    // Add Member
+    // Igrejas
+    async function refreshChurches(){
+      const r = await callAdmin('listChurches', {});
+      if(!r.success) return;
+      el('churchList').textContent = (r.items||[]).map(i=>`${i.id} — ${i.name} (${i.code})${i.isHQ?' [HQ]':''}`).join(' | ');
+    }
+    el('btnAddChurch').onclick = async ()=>{
+      const r = await callAdmin('addChurch', {name: el('chName').value.trim(), code: el('chCode').value.trim().toUpperCase(), isHQ: el('chIsHQ').checked});
+      alert(r.success?'Igreja cadastrada!':(r.message||'Erro'));
+      refreshChurches();
+    };
+    el('btnEditChurch').onclick = async ()=>{
+      const r = await callAdmin('editChurch', {id: el('chIdEdit').value.trim(), name: el('chName').value.trim(), code: el('chCode').value.trim().toUpperCase(), isHQ: el('chIsHQ').checked});
+      alert(r.success?'Igreja editada!':(r.message||'Erro'));
+      refreshChurches();
+    };
+    el('btnDelChurch').onclick = async ()=>{
+      if(!confirm('Remover igreja?')) return;
+      const r = await callAdmin('deleteChurch', {id: el('chIdEdit').value.trim()});
+      alert(r.success?'Igreja removida!':(r.message||'Erro'));
+      refreshChurches();
+    };
+
+    // Membros
     el('btnAddMembro').onclick = async ()=>{
-      const payload = {
-        name: el('mNome').value.trim(),
-        email: el('mEmail').value.trim(),
-        phone: el('mTelefone').value.trim(),
-        doc: el('mDoc').value.trim(),
-        photo: el('mFoto').value.trim(),
-        roles: el('mRoles').value.trim()
-      };
-      if(!payload.name) return alert('Informe o nome do membro.');
-      const data = await callAdmin('createMember', payload);
-      if(data.success){
-        el('novoCodigo').textContent = 'Código gerado: ' + data.code;
-        alert('Membro cadastrado! Código: '+data.code);
-      }else alert(data.message||'Erro ao cadastrar');
+      const p = {name: el('mNome').value.trim(), email: el('mEmail').value.trim(), phone: el('mTelefone').value.trim(), doc: el('mDoc').value.trim(), photo: el('mFoto').value.trim(), roles: el('mRoles').value.trim()};
+      if(!p.name) return alert('Nome obrigatório');
+      const r = await callAdmin('createMember', p);
+      alert(r.success ? ('Membro cadastrado! Código: '+r.code) : (r.message||'Erro'));
+      if(r.success) el('novoCodigo').textContent = 'Código: ' + r.code;
+    };
+    el('btnGetMembro').onclick = async ()=>{
+      const code = el('mCodigo').value.trim().toUpperCase(); if(!code) return alert('Informe o código');
+      const r = await callAdmin('getMember', {code});
+      if(!r.success) return alert(r.message||'Erro');
+      const m = r.member;
+      el('mNome').value=m.name||''; el('mEmail').value=m.email||''; el('mTelefone').value=m.phone||'';
+      el('mDoc').value=m.doc||''; el('mFoto').value=m.photo||''; el('mRoles').value=(m.roles||[]).join(', ');
+      el('membroConsultaBox').innerHTML = `<div class="p-3 rounded-xl badge">${m.name} — ${m.code}<br>Email: ${m.email||'-'} • Tel: ${m.phone||'-'}<br>Roles: ${(m.roles||[]).join(', ')||'-'}</div>`;
+      show('membroConsultaBox');
+    };
+    el('btnEditMembro').onclick = async ()=>{
+      const p = {code: el('mCodigo').value.trim().toUpperCase(), name: el('mNome').value.trim(), email: el('mEmail').value.trim(), phone: el('mTelefone').value.trim(), doc: el('mDoc').value.trim(), photo: el('mFoto').value.trim(), roles: el('mRoles').value.trim()};
+      if(!p.code) return alert('Informe o código');
+      const r = await callAdmin('updateMember', p);
+      alert(r.success?'Atualizado!':(r.message||'Erro'));
+    };
+    el('btnDelMembro').onclick = async ()=>{
+      const code = el('mCodigo').value.trim().toUpperCase(); if(!code) return alert('Informe o código');
+      if(!confirm('Excluir definitivamente?')) return;
+      const r = await callAdmin('deleteMember', {code});
+      alert(r.success?'Excluído!':(r.message||'Erro'));
     };
 
-    // Add Donation
+    // Upload foto → Drive
+    el('btnUploadFoto').onclick = async ()=>{
+      const code = el('mCodigo').value.trim().toUpperCase();
+      const f = el('mFotoFile').files[0];
+      if(!code||!f) return alert('Informe o código e selecione a foto');
+      const dataUrl = await fileToDataURL(f);
+      const mime = (f.type||'image/png');
+      const r = await callAdmin('uploadMemberPhoto', {code, base64: dataUrl, mimeType: mime, filename: (code+'-'+Date.now())});
+      alert(r.success?'Foto enviada!':(r.message||'Erro'));
+      if(r.url) el('mFoto').value = r.url;
+    };
+    function fileToDataURL(file){ return new Promise((ok,ko)=>{ const fr=new FileReader(); fr.onload=()=>ok(fr.result); fr.onerror=ko; fr.readAsDataURL(file); }); }
+
+    // Doações
     el('btnAddDoacao').onclick = async ()=>{
-      const payload = {
-        code: el('dCodigo').value.trim().toUpperCase(),
-        type: el('dTipo').value.trim(),
-        description: el('dDescricao').value.trim(),
-        amount: el('dValor').value.trim(),
-        status: el('dStatus').value
-      };
-      if(!payload.code || !payload.type || !payload.amount) return alert('Preencha código, tipo e valor.');
-      const data = await callAdmin('addDonation', payload);
-      alert(data.success? 'Lançado com sucesso!' : (data.message||'Erro'));
+      const p = {code: el('dCodigo').value.trim().toUpperCase(), type: el('dTipo').value.trim(), description: el('dDescricao').value.trim(), amount: el('dValor').value.trim(), paymentMethod: el('dMetodo').value, status: el('dStatus').value};
+      if(!p.code||!p.type||!p.amount) return alert('Preencha código, tipo e valor');
+      const r = await callAdmin('addDonation', p);
+      alert(r.success?'Lançado!':(r.message||'Erro'));
+      refreshBalances();
+    };
+    el('btnQuitar').onclick = async ()=>{
+      const p = {id: el('qId').value.trim(), method: el('qMetodo').value, note: el('qDescricao').value.trim()};
+      if(!p.id) return alert('Informe o ID');
+      const r = await callAdmin('settlePending', p);
+      alert(r.success?'Quitado!':(r.message||'Erro'));
+      refreshBalances();
     };
 
-    // Notifications
+    // Notificações
+    async function refreshNotifsList(){
+      const r = await callAdmin('listNotifications', {});
+      if(!r.success) return;
+      el('notifList').textContent = (r.items||[]).map(n=>`${n.id} — ${n.title} (expira ${new Date(n.expiresAt).toLocaleString()})`).join(' | ');
+    }
     el('btnSendNotif').onclick = async ()=>{
-      const payload = {
-        title: el('nTitulo').value.trim(),
-        message: el('nMensagem').value.trim(),
-        targets: el('nTargets').value.trim()||'ALL'
-      };
-      if(!payload.title||!payload.message) return alert('Preencha título e mensagem.');
-      const data = await callAdmin('sendNotification', payload);
-      alert(data.success? 'Notificação enviada!' : (data.message||'Erro'));
+      const p = {title: el('nTitulo').value.trim(), message: el('nMensagem').value.trim(), targets: (el('nTargets').value.trim()||'ALL'), expiresAt: el('nExpire').value};
+      if(!p.title||!p.message) return alert('Preencha título e mensagem');
+      const r = await callAdmin('sendNotification', p);
+      alert(r.success?'Enviada!':(r.message||'Erro'));
+      refreshNotifsList();
+    };
+    el('btnNotifEdit').onclick = async ()=>{
+      const r = await callAdmin('editNotification', {id: el('gnId').value.trim(), title: el('nTitulo').value.trim(), message: el('nMensagem').value.trim(), targets: el('nTargets').value.trim(), expiresAt: el('nExpire').value});
+      alert(r.success?'Editada!':(r.message||'Erro'));
+      refreshNotifsList();
+    };
+    el('btnNotifDel').onclick = async ()=>{
+      if(!confirm('Remover notificação?')) return;
+      const r = await callAdmin('deleteNotification', {id: el('gnId').value.trim()});
+      alert(r.success?'Removida!':(r.message||'Erro'));
+      refreshNotifsList();
     };
 
-    // Agenda / Schedule (Admin)
+    // Agenda / Escala
     el('btnAddSchedule').onclick = async ()=>{
-      const payload = {
-        date: el('sDate').value,
-        time: el('sTime').value,
-        location: el('sLocation').value.trim(),
-        theme: el('sTheme').value.trim(),
-        minister: el('sMinister').value.trim(),
-        team: el('sTeam').value.trim(),
-        notes: el('sNotes').value.trim(),
-        targets: el('sTargets').value.trim()||'ALL'
-      };
-      if(!payload.date) return alert('Informe a data.');
-      const data = await callAdmin('addSchedule', payload);
-      alert(data.success? 'Escala adicionada!' : (data.message||'Erro'));
+      const p = {date: el('sDate').value, time: el('sTime').value, location: el('sLocation').value.trim(), theme: el('sTheme').value.trim(), minister: el('sMinister').value.trim(), team: el('sTeam').value.trim(), notes: el('sNotes').value.trim(), targets: el('sTargets').value.trim()||'ALL'};
+      if(!p.date) return alert('Informe a data');
+      const r = await callAdmin('addSchedule', p);
+      alert(r.success?'Adicionado!':(r.message||'Erro'));
+    };
+    el('btnUpdSchedule').onclick = async ()=>{
+      const p = {id: el('sId').value.trim(), date: el('sDate').value, time: el('sTime').value, location: el('sLocation').value.trim(), theme: el('sTheme').value.trim(), minister: el('sMinister').value.trim(), team: el('sTeam').value.trim(), notes: el('sNotes').value.trim(), targets: el('sTargets').value.trim()};
+      if(!p.id) return alert('Informe o ID');
+      const r = await callAdmin('editSchedule', p);
+      alert(r.success?'Atualizado!':(r.message||'Erro'));
+    };
+    el('btnDelSchedule').onclick = async ()=>{
+      if(!confirm('Remover evento?')) return;
+      const id = el('sId').value.trim(); if(!id) return alert('Informe o ID');
+      const r = await callAdmin('deleteSchedule', {id});
+      alert(r.success?'Removido!':(r.message||'Erro'));
+    };
+
+    // Administradores
+    el('btnAddAdmin').onclick = async ()=>{
+      const p = {name: el('aNome').value.trim(), email: el('aEmail').value.trim(), password: el('aSenha').value, adminRole: el('aRoleAdm').value.trim(), ecclesRole: el('aRoleEcl').value.trim()};
+      if(!p.name||!p.email||!p.password) return alert('Preencha nome/email/senha');
+      const r = await callAdmin('setAdmin', p);
+      alert(r.success?'Admin cadastrado!':(r.message||'Erro'));
+    };
+    el('btnListAdmins').onclick = async ()=>{
+      const r = await callAdmin('listAdmins', {});
+      el('adminsList').innerHTML = (r.items||[]).map(a=>`<div class="badge p-2 rounded-xl mb-1">${a.id} — ${a.name} — ${a.email} — ${a.adminRole||''} — ${a.ecclesRole||''}${a.isHQ?' [HQ]':''}</div>`).join('');
+    };
+    el('btnDelAdmin').onclick = async ()=>{
+      if(!confirm('Excluir admin?')) return;
+      const id = el('adIdDel').value.trim(); if(!id) return alert('Informe o ID');
+      const r = await callAdmin('deleteAdmin', {id});
+      alert(r.success?'Excluído!':(r.message||'Erro'));
+    };
+    el('btnEditSelf').onclick = async ()=>{
+      const p = {newEmail: el('myNewEmail').value.trim(), newPassword: el('myNewPass').value, adminRole: el('myNewAdm').value.trim(), ecclesRole: el('myNewEcl').value.trim()};
+      const r = await callAdmin('adminUpdate', p);
+      alert(r.success?'Atualizado!':(r.message||'Erro'));
+    };
+
+    // Financeiro: saldos + retiradas + gráfico
+    async function refreshBalances(){
+      const r = await callAdmin('getBalances', {});
+      if(!r.success) return;
+      const b = r.balances||{};
+      el('balancesBox').innerHTML = [
+        `Saldo Geral: <b>${Number(b.saldoGeralKz||0).toLocaleString('pt-AO')} Kz</b>`,
+        `Total Pago: <b>${Number(b.totalPaidKz||0).toLocaleString('pt-AO')} Kz</b>`,
+        `Total Pendente: <b>${Number(b.totalPendingKz||0).toLocaleString('pt-AO')} Kz</b>`,
+        `Retiradas: <b>${Number(b.totalOutKz||0).toLocaleString('pt-AO')} Kz</b>`
+      ].map(s=>`<div class="p-3 rounded-xl badge">${s}</div>`).join('');
+    }
+    el('btnAddExpense').onclick = async ()=>{
+      const p = {amount: el('exValor').value.trim(), reason: el('exMotivo').value.trim(), who: el('exQuem').value.trim()};
+      if(!p.amount||!p.reason||!p.who) return alert('Preencha todos os campos');
+      const r = await callAdmin('addExpense', p);
+      alert(r.success?'Retirada lançada!':(r.message||'Erro'));
+      refreshBalances();
+    };
+
+    let chart;
+    el('btnResumoMensal').onclick = async ()=>{
+      const year = Number(el('repAno').value.trim()) || new Date().getFullYear();
+      const r = await callAdmin('monthlyTotals', {year});
+      if(!r.success) return alert(r.message||'Erro');
+      renderMonthly(r);
+    };
+    el('btnExportCSV').onclick = async ()=>{
+      const year = Number(el('repAno').value.trim()) || new Date().getFullYear();
+      const r = await callAdmin('exportCSV', {year});
+      if(!r.success) return alert(r.message||'Erro');
+      const a=document.createElement('a'); a.href=r.dataUrl; a.download=r.name||'relatorio.csv'; a.click();
+    };
+    el('btnExportPDF').onclick = async ()=>{
+      const year = Number(el('repAno').value.trim()) || new Date().getFullYear();
+      const r = await callAdmin('exportPDF', {year});
+      if(!r.success) return alert(r.message||'Erro');
+      const a=document.createElement('a'); a.href=r.dataUrl; a.download=r.name||'relatorio.pdf'; a.click();
+    };
+
+    function renderMonthly(rep){
+      const labels = rep.byMonth.map(m=>String(m.month).padStart(2,'0'));
+      const paid   = rep.byMonth.map(m=>m.totalPaid);
+      const pendCt = rep.byMonth.map(m=>m.pendingCount);
+      const ctx = document.getElementById('chartFinance').getContext('2d');
+      if(!chart){
+        chart = new Chart(ctx, {
+          type:'bar',
+          data:{labels, datasets:[
+            {label:'Pagas (Kz)', data: paid},
+            {label:'Pendentes (Qtd)', data: pendCt}
+          ]},
+          options:{responsive:true}
+        });
+      }else{
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = paid;
+        chart.data.datasets[1].data = pendCt;
+        chart.update();
+      }
+      // detalhe por membro
+      const box = el('mensalDetalhe');
+      const html = rep.byMonth.map(m=>{
+        const paidList = (m.paidMembers||[]).map(pm=>`${pm.name} (${pm.code}) — ${Number(pm.amount||0).toLocaleString('pt-AO')} Kz`).join('<br>');
+        const pendList = (m.pendingMembers||[]).map(pm=>`${pm.name} (${pm.code})`).join(', ');
+        return `<div class="p-3 rounded-xl badge mb-2"><b>Mês ${m.month}</b><br>Pago: ${Number(m.totalPaid||0).toLocaleString('pt-AO')} Kz<br>
+                Pagos por membro:<br>${paidList||'-'}<br>Pendentes: ${m.pendingCount} — ${pendList||'-'}</div>`;
+      }).join('');
+      box.innerHTML = html;
+    }
+
+    // Chat (Admin): precisa do threadId (o membro obtém ao enviar a primeira mensagem)
+    el('btnLoadThread').onclick = async ()=>{ await loadChatAdmin(); if(chatTimerAdmin) clearInterval(chatTimerAdmin); chatTimerAdmin=setInterval(loadChatAdmin, 5000); };
+    async function loadChatAdmin(){
+      const t = el('threadIdAdmin').value.trim(); if(!t) return alert('Informe o Thread ID');
+      const r = await apiCall({action:'fetchChat', threadId: t});
+      const box = el('chatMsgsAdmin'); box.innerHTML='';
+      (r.items||[]).forEach(m=>{
+        const isAdmin = (m.from==='admin');
+        const div = document.createElement('div');
+        div.className = 'mb-2 ' + (isAdmin?'text-emerald-300':'text-slate-200');
+        div.innerHTML = `<b>${isAdmin?'Admin':'Membro'}:</b> ${m.message} <span class="text-[10px] text-slate-500">${new Date(m.ts).toLocaleString()}</span>`;
+        box.appendChild(div);
+      });
+      box.scrollTop = box.scrollHeight;
+    }
+    el('btnChatSendAdmin').onclick = async ()=>{
+      const t = el('threadIdAdmin').value.trim();
+      const msg = el('chatTextAdmin').value.trim();
+      if(!t||!msg) return;
+      el('chatTextAdmin').value='';
+      await callAdmin('sendAdminMsg', {threadId: t, message: msg});
+      loadChatAdmin();
     };
   </script>
 </body>
